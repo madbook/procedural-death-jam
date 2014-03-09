@@ -7,30 +7,21 @@
     <h1>Rouge Tetris!</h1>
     <p>Arrow keys to move block. z/x to rotate block</p>
     <p>Hold shift to move character (@) instead of moving blocks.</p>
+    <h3>Score <span id="score">0</span></h3>
+    <h3>Board</h3>
     <pre id="view"></pre>
+    <h3>Next</h3>
+    <pre id="preview"></pre>
     <script>
 
         var board = []
         var _shape = null
         var _x, _y
         var pX, pY
-
-        reset(board)
-
-        function makePiece (arr) {
-          return arr.map(function (line) {
-            return parseInt(line, 2)
-          })
-        }
-
-        function reset (board) {
-          board.length = 0
-          while (board.length < 22)
-            board.push(0)
-          pX = 0
-          pY = 21
-          return board
-        }
+        var _nextShape = null
+        var _score = 0
+        var _level = 0
+        var gameSpeed = 500
 
         var pieces = [
           ['11',
@@ -61,13 +52,38 @@
           ['001',
            '111',
            '000']
-        ]
+        ].map(makePiece)
 
-        pieces = pieces.map(makePiece)
+        reset(board)
+        tick()
+
+        function makePiece (arr) {
+          return arr.map(function (line) {
+            return parseInt(line, 2)
+          })
+        }
+
+        function reset (board) {
+          _nextShape = getNextPiece()
+          _shape = null
+          board.length = 0
+          while (board.length < 22)
+            board.push(0)
+          pX = 0
+          pY = 21
+          _score = 0
+          return board
+        }
+
+        function getNextPiece () {
+          return pieces[Math.min(pieces.length-1, Math.random()*pieces.length|0)].slice()
+        }
 
         function getNewPiece () {
-          _shape = pieces[Math.min(pieces.length-1, Math.random()*pieces.length|0)].slice()
-
+          _shape = _nextShape
+          _nextShape = getNextPiece()
+          _x = 10 - _shape.length
+          _x = Math.min(_x, Math.random() * _x | 0)
           _x = 5
           _y = 0
         }
@@ -112,11 +128,6 @@
             return r
           })
         }
-
-
-        var gameSpeed = 500
-
-        tick()
 
         function tick () {
           if (_shape === null)
@@ -191,17 +202,25 @@
           makeComposite(board, shape, x, y)
 
           var playerDies = false
+          var points = 0
 
           var fullRow = (1 << 10) - 1
           board = board.filter(function (line, i) {
-            if (i === pY && line === fullRow)
-              playerDies = true
+            if (line === fullRow) {
+              points += 1
+              if (i === pY)
+                playerDies = true
+              else if (pY < i)
+                pY += 1
+            }
             return !(line === fullRow)
           })
 
           if (playerDies) {
             board = reset(board)
             return board
+          } else if (points) {
+            increasePoints(points)
           }
 
           while (board.length < 22)
@@ -213,19 +232,26 @@
           return board
         }
 
+        function increasePoints (n) {
+          _score += n
+        }
+
         function render () {
           var composite = board.slice()
 
-          // if (_shape)
-          //   makeComposite(composite, _shape, _x, _y)
-
-          composite = composite.map(boardRenderer)
+          composite = composite.map(renderer(10, ' ', '#'))
 
           if (_shape)
             compositeShape(composite, '.', _shape, _x, _y)
 
+          composite[0] = '=========='
+          composite[1] = composite[0]
+
           compositeSymbol(composite, '@', pX, pY)
+
           view.innerHTML = composite.join('\n')
+          preview.innerHTML = _nextShape.map(renderer(_nextShape.length, '.', ' ')).join('\n')
+          score.innerHTML = _score
         }
 
         function compositeShape (composite, s, shape, x, y) {
@@ -240,11 +266,15 @@
         }
 
         function compositeSymbol (composite, s, x, y) {
+          if (y >= composite.length)
+            return
           composite[y] = composite[y].slice(0, x) + s + composite[y].slice(x + 1)
         }
 
-        function boardRenderer (line) {
-          return ((1 << 10) | line).toString(2).slice(1).replace(/0/g, '#').replace(/1/g, ' ')
+        function renderer (w, on, off) {
+          return function (line) {
+            return ((1 << w) | line).toString(2).slice(1).replace(/0/g, off).replace(/1/g, on)
+          }
         }
 
         window.addEventListener('keydown', function (e) {
