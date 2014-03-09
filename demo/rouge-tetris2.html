@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <title>Tetris Demo</title>
+      <style>
+        body {
+          width: 400px;
+          margin: auto;
+          font-family: 'Source Code Pro', 'Anonymous Pro', 'Monaco', monospace;
+        }
+
+        main {
+          display: flex;
+          align-items: stretch;
+        }
+
+        .column {
+          padding: 10px;
+        }
+
+        .mainColumn {
+          flex-grow: 2
+        }
+
+        .scoreColumn {
+          flex-grow: 1
+        }
+
+      </style>
+  </head>
+  <body>
+    <header>
+      <h1>Rouge Tetris!</h1>
+      <p>Arrow keys to move block. z/x to rotate block</p>
+      <p>Hold shift to move character <code>@</code> instead of moving blocks.</p>
+    </header>
+    <main>
+      <div class="column mainColumn">
+        <pre id="view"></pre>
+      </div>
+      <div class="column scoreColumn">
+        <h3>Score <span id="score">0</span></h3>
+        <h3>Next</h3>
+        <pre id="preview"></pre>
+      </div>
+    </main>
+    <script src="rouge-tetris2.js"></script>
+  </body>
+</html>
