@@ -11,13 +11,25 @@
     <script>
 
         var board = []
-        while (board.length < 22)
-          board.push(0)
+        var _shape = null
+        var _x, _y
+        var pX, pY
+
+        reset(board)
 
         function makePiece (arr) {
           return arr.map(function (line) {
             return parseInt(line, 2)
           })
+        }
+
+        function reset (board) {
+          board.length = 0
+          while (board.length < 22)
+            board.push(0)
+          pX = 0
+          pY = 21
+          return board
         }
 
         var pieces = [
@@ -52,11 +64,6 @@
         ]
 
         pieces = pieces.map(makePiece)
-
-        var _shape = null
-        var _x, _y
-        var pX = 0
-        var pY = 21
 
         function getNewPiece () {
           _shape = pieces[Math.min(pieces.length-1, Math.random()*pieces.length|0)].slice()
@@ -183,29 +190,61 @@
           _shape = null
           makeComposite(board, shape, x, y)
 
+          var playerDies = false
+
           var fullRow = (1 << 10) - 1
-          board = board.filter(function (line) {
+          board = board.filter(function (line, i) {
+            if (i === pY && line === fullRow)
+              playerDies = true
             return !(line === fullRow)
           })
 
+          if (playerDies) {
+            board = reset(board)
+            return board
+          }
+
           while (board.length < 22)
             board.unshift('0')
+
+          if (board[2] !== 0)
+            board = reset(board)
 
           return board
         }
 
         function render () {
           var composite = board.slice()
-          if (_shape)
-            makeComposite(composite, _shape, _x, _y)
+
+          // if (_shape)
+          //   makeComposite(composite, _shape, _x, _y)
 
           composite = composite.map(boardRenderer)
-          composite[pY] = composite[pY].slice(0,pX) + '@' + composite[pY].slice(pX+1)
+
+          if (_shape)
+            compositeShape(composite, '.', _shape, _x, _y)
+
+          compositeSymbol(composite, '@', pX, pY)
           view.innerHTML = composite.join('\n')
         }
 
+        function compositeShape (composite, s, shape, x, y) {
+          var n = shape.length
+          shape.forEach(function (line, i) {
+            var j = n
+            while (j--) {
+              if (line & 1 << j)
+                compositeSymbol(composite, s, x + (n - j - 1), y + i)
+            }
+          })
+        }
+
+        function compositeSymbol (composite, s, x, y) {
+          composite[y] = composite[y].slice(0, x) + s + composite[y].slice(x + 1)
+        }
+
         function boardRenderer (line) {
-          return ((1 << 10) | line).toString(2).slice(1).replace(/0/g, '#').replace(/1/g, '.')
+          return ((1 << 10) | line).toString(2).slice(1).replace(/0/g, '#').replace(/1/g, ' ')
         }
 
         window.addEventListener('keydown', function (e) {
