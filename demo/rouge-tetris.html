@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <title>Tetris Demo</title>
+  </head>
+  <body>
+    <h1>Rouge Tetris!</h1>
+    <p>Arrow keys to move block. z/x to rotate block</p>
+    <p>Hold shift to move character (@) instead of moving blocks.</p>
+    <pre id="view"></pre>
+    <script>
+
+        var board = []
+        while (board.length < 22)
+          board.push(0)
+
+        function makePiece (arr) {
+          return arr.map(function (line) {
+            return parseInt(line, 2)
+          })
+        }
+
+        var pieces = [
+          ['11',
+           '11'],
+
+          ['00000',
+           '00000',
+           '01111',
+           '00000',
+           '00000'],
+
+          ['000',
+           '011',
+           '110'],
+
+          ['000',
+           '110',
+           '011'],
+
+          ['010',
+           '111',
+           '000'],
+
+          ['100',
+           '111',
+           '000'],
+
+          ['001',
+           '111',
+           '000']
+        ]
+
+        pieces = pieces.map(makePiece)
+
+        var _shape = null
+        var _x, _y
+        var pX = 0
+        var pY = 21
+
+        function getNewPiece () {
+          _shape = pieces[Math.min(pieces.length-1, Math.random()*pieces.length|0)].slice()
+
+          _x = 5
+          _y = 0
+        }
+
+        /*
+          rotate functions are a little unintuitive due to the fact that i'm
+          storing rows as bits instead of nesting arrays.  my way is more
+          efficient, but it be easier to write the functions if it were a
+          2d array...
+         */
+
+        function rotateClockwise (shape) {
+          var n = shape.length - 1
+          return shape.map(function (line, i, arr) {
+            var r = 0 // res
+            var c = n - i // column to pull from
+            var j = shape.length // iterate through rows
+            var m // bit shift to put value in its target column
+            var v
+            while (j--) {
+              m = (c - j)
+              v = (arr[j] & (1 << c))
+              r |= (m < 0) ? v << -m : v >> m
+            }
+            return r
+          })
+        }
+
+        function rotateCounterclockwise (shape) {
+          var n = shape.length - 1
+          return shape.map(function (line, i, arr) {
+            var r = 0 // res
+            var c = i // column to pull from
+            var j = shape.length // iterate through rows
+            var m // amount to move column
+            var v
+            while (j--) {
+              m = (j - (n -c))
+              v = (arr[j] & (1 << c))
+              r |= (m < 0) ? v << -m : v >> m
+            }
+            return r
+          })
+        }
+
+
+        var gameSpeed = 500
+
+        tick()
+
+        function tick () {
+          if (_shape === null)
+            getNewPiece()
+          else if (checkCollision(_shape, _x, _y + 1))
+            board = addToBoard(board, _shape, _x, _y)
+          else
+            _y += 1
+
+          render()
+          setTimeout(tick, gameSpeed)
+        }
+
+        function checkCollision (shape, x, y) {
+          var n = shape.length
+          var m = 10 - n
+          return shape.some(function (line, i) {
+            if (line === 0) // if this line of shape is empty
+              return false
+
+            var _y = i + y
+            if (_y >= board.length) // if line on board is below lowest
+              return true
+
+            var _x = m - x // map x coordinate to x bit (x=0 is 10th bit)
+
+            if (_x < 0) { // piece is off the right side
+              if (getMaskOfLength(-_x) & line)
+                return true
+              line >>= -_x
+              _x = 0
+            }
+            else if (_x > m) { // piece is off the left side
+              if (getMaskOfLength(_x - m) & (line >> (n - (_x - m))))
+                return true
+            }
+
+            return !!(board[_y] & (line << _x))
+          })
+        }
+
+        function checkCollisionAt (x, y) {
+          if (x < 0 || x > 9 || y < 0 || y >= board.length)
+            return false
+          return !!(board[y] & (1 << (9 - x)))
+        }
+
+        function getMaskOfLength (l) {
+          return parseInt(((~0 >>> 0).toString(2).slice(0,l)), 2)
+        }
+
+        function makeComposite (board, shape, x, y) {
+          var n = shape.length
+          var m = 10 - n
+          shape.forEach(function (line, i) {
+            if (line === 0 || i + y >= board.length)
+              return
+
+            var _x = m - x
+
+            if (_x < 0) {
+              line >>= -_x
+              _x = 0
+            }
+
+            board[i + y] |= (line << _x)
+          })
+        }
+
+        function addToBoard (board, shape, x, y) {
+          _shape = null
+          makeComposite(board, shape, x, y)
+
+          var fullRow = (1 << 10) - 1
+          board = board.filter(function (line) {
+            return !(line === fullRow)
+          })
+
+          while (board.length < 22)
+            board.unshift('0')
+
+          return board
+        }
+
+        function render () {
+          var composite = board.slice()
+          if (_shape)
+            makeComposite(composite, _shape, _x, _y)
+
+          composite = composite.map(boardRenderer)
+          composite[pY] = composite[pY].slice(0,pX) + '@' + composite[pY].slice(pX+1)
+          view.innerHTML = composite.join('\n')
+        }
+
+        function boardRenderer (line) {
+          return ((1 << 10) | line).toString(2).slice(1).replace(/0/g, '#').replace(/1/g, '.')
+        }
+
+        window.addEventListener('keydown', function (e) {
+          if (!_shape)
+            return
+          var key = e.keyCode
+          var shift = e.shiftKey
+
+          if (shift) {
+            if (key === 37 && checkCollisionAt(pX - 1, pY))
+              pX -= 1
+            if (key === 38 && checkCollisionAt(pX, pY - 1))
+              pY -= 1
+            if (key === 39 && checkCollisionAt(pX + 1, pY))
+              pX += 1
+            if (key === 40 && checkCollisionAt(pX, pY + 1))
+              pY += 1
+          }
+          else {
+            if (key === 37 && !checkCollision(_shape, _x - 1, _y))
+              _x -= 1
+            if (key === 39 && !checkCollision(_shape, _x + 1, _y))
+              _x += 1
+            if (key === 40 && !checkCollision(_shape, _x, _y + 1))
+              _y += 1
+
+            if (key === 88) {
+              var _rotated = rotateClockwise(_shape)
+              if (!checkCollision(_rotated, _x, _y))
+                _shape = _rotated
+            }
+            if (key === 90) {
+              var _rotated = rotateCounterclockwise(_shape)
+              if (!checkCollision(_rotated, _x, _y))
+                _shape = _rotated
+            }
+          }
+          render()
+        })
+
+    </script>
+  </body>
+</html>
