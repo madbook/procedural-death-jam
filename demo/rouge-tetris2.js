@@ -38,6 +38,8 @@ var pieces = [
    '000']
 ].map(makePiece)
 
+var boardRenderer = renderer(10, '.', '#')
+
 reset(board)
 tick()
 
@@ -55,8 +57,8 @@ function reset (board) {
   board.length = 0
   while (board.length < 22)
     board.push(0)
-  pX = 0
-  pY = 21
+  pX = 1
+  pY = 64
   _score = 0
   return board
 }
@@ -155,12 +157,6 @@ function checkCollision (shape, x, y) {
   })
 }
 
-function checkCollisionAt (x, y) {
-  if (x < 0 || x > 9 || y < 0 || y >= board.length)
-    return false
-  return !!(board[y] & (1 << (9 - x)))
-}
-
 function getMaskOfLength (l) {
   return parseInt(((~0 >>> 0).toString(2).slice(0,l)), 2)
 }
@@ -225,24 +221,65 @@ function increasePoints (n) {
   _score += n
 }
 
+// player
+
+var player = [['@','*'],
+              ['$','&']]
+
+function rotatePlayer (player) {
+
+}
+
+function rotatePlayerClockwise (player) {
+
+}
+
 // RENDERING
 
 function render () {
   var composite = board.slice()
 
-  composite = composite.map(renderer(10, '..', '##'))
+  composite = composite.map(boardRenderer)
 
   if (_shape)
-    compositeShape(composite, '[]', _shape, _x, _y)
+    compositeShape(composite, '*', _shape, _x, _y)
 
-  composite[0] = '===================='
+  composite[0] = '=========='
   composite[1] = composite[0]
 
-  compositeSymbol(composite, "@'", pX, pY)
+  composite = upscale(composite)
 
-  view.innerHTML = composite.join('\n')
-  preview.innerHTML = _nextShape.map(renderer(_nextShape.length, '[]', '  ')).join('\n')
+  compositeSymbol(composite, "@", pX, pY)
+
+  var iso = composite.length
+  var isoTabber = []
+  view.innerHTML = composite.map(function (line) {
+    isoTabber.length = iso--
+    return isoTabber.join(' ') + line
+  }).join('\n')
+  preview.innerHTML = _nextShape.map(renderer(_nextShape.length, '*', ' ')).join('\n')
   score.innerHTML = _score
+}
+
+function checkCollisionAt (x, y, s) {
+  var composite = upscale(board.map(boardRenderer))
+  if (x < 0 || x > 29 || y < 0 || y >= composite.length)
+    return false
+  return (composite[y][x] === s)
+}
+
+
+function upscale (composite) {
+  return composite.map(tripler).join('\n').split('\n')
+}
+
+function tripler (line) {
+  line = line.split('').map(colTripler).join('')
+  return line + '\n' + line + '\n' + line
+}
+
+function colTripler (str) {
+  return str + str + str
 }
 
 function compositeShape (composite, s, shape, x, y) {
@@ -259,7 +296,7 @@ function compositeShape (composite, s, shape, x, y) {
 function compositeSymbol (composite, s, x, y) {
   if (y >= composite.length)
     return
-  composite[y] = composite[y].slice(0, 2*x) + s + composite[y].slice(2*(x + 1))
+  composite[y] = composite[y].slice(0, x) + s + composite[y].slice(x + 1)
 }
 
 function renderer (w, on, off) {
@@ -279,13 +316,13 @@ window.addEventListener('keydown', function (e) {
   var shift = e.shiftKey
 
   if (shift) {
-    if (key === 37 && checkCollisionAt(pX - 1, pY))
+    if (key === 37 && checkCollisionAt(pX - 1, pY, '.'))
       pX -= 1
-    if (key === 38 && checkCollisionAt(pX, pY - 1))
+    if (key === 38 && checkCollisionAt(pX, pY - 1, '.'))
       pY -= 1
-    if (key === 39 && checkCollisionAt(pX + 1, pY))
+    if (key === 39 && checkCollisionAt(pX + 1, pY, '.'))
       pX += 1
-    if (key === 40 && checkCollisionAt(pX, pY + 1))
+    if (key === 40 && checkCollisionAt(pX, pY + 1, '.'))
       pY += 1
   }
   else {
