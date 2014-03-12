@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+  <head>
+      <title>Tetris Demo</title>
+  </head>
+  <body>
+    <h1>Tetris!</h1>
+    <p>Arrow keys to move block. z/x to rotate block</p>
+
+    <canvas id="view"></canvas>
+
+    <script src="lib/canned-vas.js"></script>
+    <script src="src/mason.js"></script>
+    <script>
+        var myMason = new Mason(10, 22)
+        var scale = 20
+
+        var pieces = [
+          [[1,1],
+           [1,1]],
+
+          [[1,1,1,1]],
+
+          [[0,1,1],
+           [1,1,0]],
+
+          [[1,1,0],
+           [0,1,1]],
+
+          [[0,1,0],
+           [1,1,1]],
+
+          [[1,0,0],
+           [1,1,1]],
+
+          [[0,0,1],
+           [1,1,1]]
+        ]
+
+        function getNewPiece () {
+            return pieces[Math.min(pieces.length-1, Math.random()*pieces.length|0)]
+        }
+
+        var can = new CannedVas(view)
+        can.width(myMason.width * scale).height(myMason.height * scale)
+        can.style('backgroundColor', '#EEE')
+
+        tick()
+        
+        function tick () {
+            myMason.tick()
+            if (!myMason.brickQueue.length)
+                myMason.queueNextBrick(new Brick(getNewPiece(), 0, 0))
+            render()
+            setTimeout(tick, 300)
+        }
+
+        function render () {
+            can.clearCanvas()
+            can.fillStyle('#000')
+
+            myMason.rows.forEach(function (row, y) {
+                row.forEach(function (val, x) {
+                    if (val)
+                        can.fillRect(x * scale, y * scale, scale, scale)
+                })
+            })
+
+            if (myMason.brick) {
+              can.fillStyle('#F00')
+
+              myMason.brick.blocks.forEach(function (row, y) {
+                  row.forEach(function (val, x) {
+                      if (val)
+                          can.fillRect((x + myMason.brick.x) * scale, (y + myMason.brick.y) * scale, scale, scale)
+                  })
+              })
+            }
+        }
+
+        window.addEventListener('keydown', function (e) {
+          var key = e.keyCode
+          if (key === 37)
+            myMason.slideBrickLeft(1)
+          if (key === 39)
+            myMason.slideBrickRight(1)
+          if (key === 40)
+            myMason.dropBrick(1)
+
+          if (key === 88) {
+            myMason.rotateBrick(1)
+          }
+          if (key === 90) {
+            myMason.rotateBrick(-1)
+          }
+          render()
+        })
+
+    </script>
+  </body>
+</html>
